@@ -1,4 +1,5 @@
 import os
+from tokenize import String
 import numpy as np
 
 files = ["listings.csv.gz", "calendar.csv.gz", "reviews.csv.gz"]
@@ -16,11 +17,13 @@ def delete_file(filename):
     else:
         print(f"{filename} does not exist")
 
-def create_dir(path):
+def try_create_dir(path: str) -> bool:
     if os.path.exists(path) == False:
         os.makedirs(path)
+        return True
     else:
-        print(f'{path} already exists')
+        return False
+        
 
 def copy_stream_to_file(stream, file):
     with open(file, 'wb') as handler:

@@ -30,7 +30,8 @@ def extract_values(x, soup):
 # now create the folder structure
 def download_data(x, should_download_images = False):
     full_path = os.path.join(BASE_DIR, x.name)
-    utils.create_dir(full_path)
+    utils.try_create_dir(full_path):
+        
 
     for file in files:
         file_path = os.path.join(full_path, file)
@@ -67,8 +68,13 @@ def save_images_from_url_for(ids: list, base_path: String):
     driver = webdriver.Chrome(options=opt)
     urls = {}
     photo_ids = {}
-    
+
     for id in ids:
+        current_listing_photos_dir = f'{base_path}//photos//{id}'
+
+        if utils.try_create_dir(current_listing_photos_dir) == False:
+            continue
+
         driver.get(constants.PHOTOS_URL_FORMAT.format(id))
 
         html = driver.find_element(By.TAG_NAME, 'html')
@@ -80,9 +86,6 @@ def save_images_from_url_for(ids: list, base_path: String):
         urls[id] = list(map(lambda x: x.get_attribute('src'), elems))
         photo_ids[id] = list(map(lambda x: x.get_attribute('id'), elems))
 
-        current_listing_photos_dir = f'{base_path}//photos//{id}'
-        utils.create_dir(current_listing_photos_dir)
-        
         for i in range(len(urls[id])):
             img_data = requests.get(urls[id][i]).content
             path_to_photo = f'{current_listing_photos_dir}//{photo_ids[id][i]}.jpg'
@@ -106,11 +109,11 @@ def main():
     dict_of_cities.apply(lambda x: extract_values(x, soup), axis=1)
 
     if os.path.exists(BASE_DIR) == False:
-        os.mkdir(BASE_DIR)
+        os.makedirs(BASE_DIR)
     elif __debug__:
         # only for debug
         shutil.rmtree(BASE_DIR, ignore_errors=True)
-        os.mkdir(BASE_DIR)
+        os.makedirs(BASE_DIR)
 
     dict_of_cities.apply(download_data, axis=1, should_download_images= constants.SHOULD_DOWNLOAD_IMAGES)
     dict_of_cities.index.names = ['city_id']
