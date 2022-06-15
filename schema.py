@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import pyodbc
 import utils
-from utils import isBlank, data_path
+from utils import isBlank
 from numpy import NaN
 import urllib
 from sqlalchemy import create_engine

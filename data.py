@@ -1,23 +1,23 @@
 # py -m pip install pandas
-from importlib.resources import path
+from tokenize import String
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import gzip
 import shutil
 import os
-from utils import files, data_path, delete_file
-import schema
+from utils import files, delete_file
 import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import time
-import matplotlib.image as img
 import utils
-
+import constants
 
 def extract_values(x, soup):
+    # Extract the urls to the files we are interested in.
+    # Remarks: omit archived data.
     table = soup.find('table', class_=x.name).tbody
     [tr.extract() for tr in table.find_all('tr',class_=["archived"])]
 
@@ -28,21 +28,18 @@ def extract_values(x, soup):
             x[f] = td.contents[0].attrs['href']
 
 # now create the folder structure
-def download_data(x):
-    full_path = os.path.join(base_dir, x.name)
-
-    if(os.path.exists(full_path) == False):
-        os.mkdir(full_path)
+def download_data(x, should_download_images = False):
+    full_path = os.path.join(BASE_DIR, x.name)
+    utils.create_dir(full_path)
 
     for file in files:
         file_path = os.path.join(full_path, file)
+
         if os.path.exists(file_path) or (file.endswith("gz") and os.path.exists(file_path[:-3])):
             continue
 
         r = requests.get(x[file], allow_redirects=True)
-
-        with open(file_path, 'wb') as f:
-            f.write(r.content)
+        utils.copy_stream_to_file(r.content, file_path)
 
         if file.endswith("gz"):
             with gzip.open(file_path, 'rb') as f_in:
@@ -51,18 +48,18 @@ def download_data(x):
             delete_file(file_path)
             file_path = file_path[:-3]
         
-#         x[file] = file_pathimg = PIL.Image.open(urllib.request.urlopen('https://a0.muscache.com/im/pictures/monet/Luxury-553449454187790697/original/f2dba9f3-a8f2-4c42-bab3-d2811d0837a7?im_w=720'))
-# width, height = img.size
+        x[file] = file_path
 
-# with open('myfile.txt', 'a') as myFile:
-#     for y in range(height):
-#         for x in range(width):
-#             pixel = img.getpixel((x, y))
-#             myFile.write(f'{pixel[0]} {pixel[1]} {pixel[2]}')
-#             myFile.write(' ')
-#         myFile.write('\n')
+    if should_download_images:
+        download_images_for(x)
 
-def get_url_images(ids, base_path):
+    return x
+
+def download_images_for(row):
+    listings = pd.read_csv(row[utils.files[0]], usecols=['id'])
+    save_images_from_url_for(listings['id'].tolist(), f'{BASE_DIR}//{row.name}')
+
+def save_images_from_url_for(ids: list, base_path: String):
     opt = webdriver.ChromeOptions()
     opt.add_argument("--start-maximized")
 
@@ -70,57 +67,57 @@ def get_url_images(ids, base_path):
     driver = webdriver.Chrome(options=opt)
     urls = {}
     photo_ids = {}
+    
     for id in ids:
-        driver.get(f'https://www.airbnb.gr/rooms/{id}/photos')
+        driver.get(constants.PHOTOS_URL_FORMAT.format(id))
 
         html = driver.find_element(By.TAG_NAME, 'html')
         html.send_keys(Keys.END)
         time.sleep(1)
 
-        elems = driver.find_elements(By.CSS_SELECTOR, "img._6tbg2q")
+        elems = driver.find_elements(By.CSS_SELECTOR, constants.PHOTOS_TARGET_CLASSNAME)
         elems = list(filter(lambda x: str.isnumeric(x.get_attribute('id')), elems))
         urls[id] = list(map(lambda x: x.get_attribute('src'), elems))
         photo_ids[id] = list(map(lambda x: x.get_attribute('id'), elems))
+
+        current_listing_photos_dir = f'{base_path}//photos//{id}'
+        utils.create_dir(current_listing_photos_dir)
         
         for i in range(len(urls[id])):
-            img_data = requests.get().content
-            path_to_photo = f'./url_{photo_ids[id][i]}.jpg'
-            with open(path_to_photo, 'wb') as handler:
-                handler.write(img_data)
+            img_data = requests.get(urls[id][i]).content
+            path_to_photo = f'{current_listing_photos_dir}//{photo_ids[id][i]}.jpg'
+            utils.copy_stream_to_file(img_data, path_to_photo)
 
-            batman_image = img.imread(urllib.request.urlopen(urls[id][i]))
-            utils.delete_file()
-            with open(path_to_photo, 'a') as handler:
-                for row in batman_image:
-                    for temp_r, temp_g, temp_b in row:
-                        handler.write(f'({temp_r},{temp_g},{temp_b})')
     driver.quit()
 
 # instance vars
-base_dir = data_path
-
-# define here the cities to download. It is the city name in the top of the get data page sections.
-list_of_cities = ["London, England, United Kingdom"]
+BASE_DIR = constants.DATA_PATH
 
 def main():
-    print("Data will be written into: " + base_dir)
+    print("Data will be written into: " + BASE_DIR)
 
     dict_of_cities = pd.DataFrame(columns=["list_of_cities"]+files)
-    dict_of_cities["list_of_cities"] = list_of_cities
+    dict_of_cities["list_of_cities"] = constants.CITIES
     dict_of_cities.index = dict_of_cities["list_of_cities"].apply(lambda x: x.split(',')[0].lower())
 
-    URL = "http://insideairbnb.com/get-the-data.html"
-    page = requests.api.get(URL)
+    page = requests.api.get(constants.INSIDE_AIRBNB_DATA_URL)
     soup = BeautifulSoup(page.content, "html.parser")
         
     dict_of_cities.apply(lambda x: extract_values(x, soup), axis=1)
 
-    if os.path.exists(base_dir) == False:
-        os.mkdir(base_dir)
+    if os.path.exists(BASE_DIR) == False:
+        os.mkdir(BASE_DIR)
+    elif __debug__:
+        # only for debug
+        shutil.rmtree(BASE_DIR, ignore_errors=True)
+        os.mkdir(BASE_DIR)
 
-    dict_of_cities.apply(download_data, axis=1)
+    dict_of_cities.apply(download_data, axis=1, should_download_images= constants.SHOULD_DOWNLOAD_IMAGES)
     dict_of_cities.index.names = ['city_id']
-    dict_of_cities.to_csv(os.path.join(base_dir, "description.csv"))
+    dict_of_cities.to_csv(os.path.join(BASE_DIR, "description.csv"))
+
+if __name__ == "__main__":
+    main()
 # schema.create_schema()
 # schema.transform_and_import_data()
 
