@@ -1,18 +1,17 @@
 # py -m pip install pandas
-from tokenize import String
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import gzip
 import shutil
 import os
-from utils import files, delete_file
+from common.utils import files, delete_file
 import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import time
-import utils
+import common.utils as utils
 import constants
 
 def extract_values(x, soup):
@@ -60,7 +59,7 @@ def download_images_for(row):
     listings = pd.read_csv(row[utils.files[0]], usecols=['id'])
     save_images_from_url_for(listings['id'].tolist(), f'{BASE_DIR}//{row.name}')
 
-def save_images_from_url_for(ids: list, base_path: String):
+def save_images_from_url_for(ids: list, base_path: str):
     opt = webdriver.ChromeOptions()
     opt.add_argument("--start-maximized")
 

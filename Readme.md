@@ -8,4 +8,4 @@ If you want to omit downloading the photos which is a time-consuming procedure, 
 
 Set the directory in which the data will be stored in `constants.DATA_PATH`.
 
-Run the `data.py` main method to download the data.
+Run the `data/acquisition.py` main method to download the data.

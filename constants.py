@@ -11,3 +11,6 @@ CITIES = ["Athens, Attica, Greece"]
 
 # Decide here if you want to download images, make sure to omit them if you are interested only in other features.
 SHOULD_DOWNLOAD_IMAGES = True
+
+UNKNOWN = "Unknown"
+UNKNOWN_SHORT = "u"
