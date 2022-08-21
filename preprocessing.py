@@ -1,12 +1,11 @@
+from asyncio import constants
 import os
 import pandas as pd
-import pyodbc
 import common.utils as utils
 from common.utils import isBlank
 from numpy import NaN
-import common.geo_utils as geo_utils
 import numpy as np
-from timeit import default_timer as timer
+import constants
 
 from constants import UNKNOWN, UNKNOWN_SHORT
 
@@ -14,7 +13,7 @@ from constants import UNKNOWN, UNKNOWN_SHORT
 ### Normalize data
 ###
 def clean_listing_columns(listings_df):
-    listings_table_headers = pd.Index(utils.getTableColumns(conn, 'listings'))
+    listings_table_headers = pd.Index(constants.COLUMNS_TO_KEEP)
 
     listings_csv_headers = pd.Index(listings_df.columns.values.tolist())
     intersected_cols = listings_table_headers.intersection(listings_csv_headers)
@@ -24,6 +23,14 @@ def clean_listing_columns(listings_df):
         listings_df.pop(dropped_col)
 
     return listings_df
+
+def normalize_license_data(license):
+    if isBlank(license):
+        license = 'f'
+    else:
+        license = 't'
+
+    return license
 
 def fix_price_col(p):
     if isBlank(p) == False:
@@ -37,7 +44,8 @@ def fix_price_col(p):
     return p
 
 def cleanup_data(row):
-    listings_df = pd.read_csv(row[utils.files[0]])
+    path = row[utils.files[0]]
+    listings_df = pd.read_csv(path)
     listings_df = clean_listing_columns(listings_df)
 
     listings_df["beds"] = listings_df["beds"].fillna(0)
@@ -47,29 +55,12 @@ def cleanup_data(row):
     listings_df["bathrooms_text"] = listings_df["bathrooms_text"].fillna(UNKNOWN)
     listings_df["host_is_superhost"] = listings_df["host_is_superhost"].fillna(UNKNOWN_SHORT)
     listings_df["host_identity_verified"] = listings_df["host_identity_verified"].fillna(UNKNOWN_SHORT)
-    listings_df["host_name"] = listings_df["host_name"].fillna(UNKNOWN)
     listings_df["name"] = listings_df["name"].fillna(UNKNOWN)
     listings_df["neighbourhood_cleansed"] = listings_df["neighbourhood_cleansed"].fillna(UNKNOWN)
-
-    listings_df["city_name"] = listings_df.apply(lambda r: row[1].split(',')[0], axis=1)
-
-    pois_resulted = geo_utils.load_poi_data(listings_df[["id", "longitude", "latitude"]], row[0])
-    listings_df = pd.merge(listings_df, pois_resulted, on=['id'], how='outer')
-    transit_resulted = geo_utils.load_transit_data(listings_df[["id", "longitude", "latitude"]], row[0])
-    listings_df = pd.merge(listings_df, transit_resulted, on=['id'], how='outer')
-
-    chunk_size=250000
-    rows = 0
-
-    for chunk in pd.read_csv(row[utils.files[1]], chunksize=chunk_size, iterator=True):
-        chunk = chunk[np.in1d(chunk["listing_id"], listings_df["id"])]
-        
-        chunk["available"] = chunk["available"].replace("", NaN)
-        chunk['available'] = chunk['available'].fillna(UNKNOWN_SHORT)
-        chunk["price"] = chunk["price"].apply(fix_price_col)
-        chunk["adjusted_price"] = chunk["adjusted_price"].apply(fix_price_col)
-        rows+=len(chunk)
+    listings_df["license"] = listings_df["license"].apply(normalize_license_data)
+    
+    return listings_df
 
 def transform_and_import_data(data_dir):
     description_df = pd.read_csv(os.path.join(data_dir, "description.csv"))
-    description_df.apply(insert_data_into_db, axis=1)
+    return cleanup_data(description_df.iloc[0])

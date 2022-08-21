@@ -1,18 +1,19 @@
 # py -m pip install pandas
+import constants
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import gzip
 import shutil
 import os
-from common.utils import files, delete_file
 import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import time
 import common.utils as utils
-import constants
+from common.utils import files, delete_file
+
 
 def extract_values(x, soup):
     # Extract the urls to the files we are interested in.
@@ -29,8 +30,7 @@ def extract_values(x, soup):
 # now create the folder structure
 def download_data(x, should_download_images = False):
     full_path = os.path.join(BASE_DIR, x.name)
-    utils.try_create_dir(full_path):
-        
+    utils.try_create_dir(full_path)        
 
     for file in files:
         file_path = os.path.join(full_path, file)
