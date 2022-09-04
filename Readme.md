@@ -12,6 +12,7 @@ This project’s aim is to build a service that will help many Airbnb’s hosts 
 Used two types of models
 - a custom CNN
 - LSTM 
+- and for the tabular data, we used a common sequential NN with 5 layers.
 
 ## Getting Started
 
