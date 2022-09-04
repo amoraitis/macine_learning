@@ -43,5 +43,7 @@ command to run if program contains helper info
 
 Contributors names and contact info
 
-ex. Dominique Pizzie  
-ex. [@DomPizzie](https://twitter.com/dompizzie)
+Anastasios Moraitis (p2822124)<br />
+Anastasios Safras (p2822130)<br />
+Anna Makropoulou (p2822123)<br />
+Ioannis Dekoulakos (p2822110)
